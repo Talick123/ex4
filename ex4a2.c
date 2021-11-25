@@ -1,6 +1,16 @@
 
 
 
+// --------include section------------------------
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h> //for pipe
+#include <sys/wait.h>
+#include <sys/time.h>
+
 
 int main()
 {
