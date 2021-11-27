@@ -67,7 +67,6 @@ int main(int argc, char *argv[])
     exit(EXIT_FAILURE);
   }
 
-
   //creating internal id for message queue
   if((msqid = msgget(key,0)) == -1)
   {

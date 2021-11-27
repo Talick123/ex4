@@ -53,10 +53,10 @@ int main(int argc, char *argv[])
 	int child, index;
 
   check_argv(argc);
-  if(mkfifo(argv[1], S_IFIFO | 0644) == -1 ||
+  if((mkfifo(argv[1], S_IFIFO | 0644) == -1 ||
 	  mkfifo(argv[2], S_IFIFO | 0644) == -1 ||
 	  mkfifo(argv[3], S_IFIFO | 0644) == -1 ||
-	  mkfifo(argv[4], S_IFIFO | 0644) == -1)
+	  mkfifo(argv[4], S_IFIFO | 0644) == -1) && errno != EEXIST) // ?
   {
   	puts("mkfifo error");
   	exit(EXIT_FAILURE);
