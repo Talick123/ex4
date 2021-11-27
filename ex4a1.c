@@ -1,6 +1,12 @@
 //aba
 // ./ex4a1 fifo0 fifo1 fifo2 fifo3
 
+/*
+  NOTE FOR ALL PROGRAMS
+    - there are a lot of perrors
+    - id like to send to function a string and then it will print <string> failed and then exit
+*/
+
 // --------include section------------------------
 
 #include <stdbool.h>
@@ -16,11 +22,14 @@
 // --------const section------------------------
 
 const int ARR_SIZE = 10000;
+const int MAX_INUM = 1000;
 const int ARGC_SIZE = 5;
 const int NUM_OF_GEN = 3;
-
+const int START = 1;
+const int END = -1;
 // --------struct section------------------------
 
+//TODO: CHANGE TO RECEIVE ID (1, 2, OR 3) INSTEAD OF PID)
 struct Data {
 	pid_t _cpid; //child pid
 	int _prime; //
@@ -29,7 +38,8 @@ struct Data {
 // --------protoype section------------------------
 
 void fill_array(FILE *input_file, FILE *fifo1_file, FILE *fifo2_file, FILE* fifo3_file, pid_t child[]);
-int count_primes(int arr[]);
+void find_data(int arr[], int &counter, int &max, int &min);
+void print_data(int arr[]);
 void reset_arr(int arr[], int size_arr);
 void check_argv(int argc );
 bool prime(int num);
@@ -40,6 +50,7 @@ int main(int argc, char *argv[])
 {
   //TODO: chaeck if 1 2 3 processes are connected to fifo
   pid_t ch_pid[NUM_OF_GEN];
+	int child, index;
 
   check_argv(argc);
   if(mkfifo(argv[1], S_IFIFO | 0644) == -1 ||
@@ -58,6 +69,19 @@ int main(int argc, char *argv[])
   FILE *fifo2_file = fopen(argv[3] ,"w");
   FILE *fifo3_file = fopen(argv[4] ,"w");
   //waits for numbers from all children in order to start(and tell them to start)
+
+	for(index = 1; index <= NUM_OF_GEN; index++)
+	{
+			fscanf(input_file, "%d", &child);
+			if(child == 1 || child == 2 || child == 3) //maybe without checking and just reading 3 times?
+				continue;
+			else
+				printf("i received %d", child);
+	}
+
+	fprintf(fifo1_file, "%d", START);
+	fprintf(fifo2_file, "%d", START);
+	fprintf(fifo2_file, "%d", START);
 
   fill_array(input_file, fifo1_file, fifo2_file, fifo3_file, ch_pid);
   //fills array
@@ -88,14 +112,14 @@ void fill_array(FILE *input_file, FILE *fifo1_file, FILE *fifo2_file, FILE* fifo
 	while(filled < ARR_SIZE) // while EOF ?
 	{
     //read process id and num
-		fscanf(input_file, "%d %d", &data._cpid, &data._prime);
+		fscanf(input_file, "%d %d", &data._cpid, &data._prime); //QUESTION: dont want to read into struct?? not possible in fifo??
 
 		//check which child sent the number depend on the pid
 		//send the counter of the prime num
-		if (data._cpid == child[0])
+		if (data._cpid == child[0]) //QUESTION: child is currently empty no?
 		{
 		  fprintf(fifo1_file, " %d", primes_count[data._prime]);
-		  fflush(fifo1_file);
+		  fflush(fifo1_file); //TODO: maybe we can put this in one place instead of 3
 		}
 		else if (data._cpid == child[1])
 		{
@@ -112,26 +136,42 @@ void fill_array(FILE *input_file, FILE *fifo1_file, FILE *fifo2_file, FILE* fifo
 	}
 
 	//kills children
-    fprintf(fifo1_file, " %d", -1);
-    fprintf(fifo2_file, " %d", -1);
-    fprintf(fifo3_file, " %d", -1);
+    fprintf(fifo1_file, " %d", END);
+    fprintf(fifo2_file, " %d", END);
+    fprintf(fifo3_file, " %d", END);
 
-	//add min max primes
-	printf("The number of different integers received is: %d\n",
-				 count_primes(primes_count));
+	//prints number of different primes, max and min received
+	print_data(primes_count);
+
 }
 
 //-------------------------------------------------
-//
-int count_primes(int arr[])
+
+void print_data(int arr[])
 {
-	int index, counter = 0;
+	int counter = 0, max = 2, min = MAX_INUM;
+	find_data(arr, counter, max, min);
+
+	printf("The number of different primes received is: %d\n", counter);
+	printf("The max prime is: %d. The min primes is: %d", max, min);
+}
+
+//-------------------------------------------------
+
+
+void find_data(int arr[], int &counter, int &max, int &min)
+{
+	int index;
 	//start on i=2 - we can be sure that 0 and 1 is empty
 	for(index = 2; index < ARR_SIZE; index++)
+	{
 		if(arr[index] != 0)
 			counter++;
-
-	return counter;
+		if(arr[index] != 0 && index > max)
+			max = index;
+		if(arr[index] != 0 && index < min)
+			min = index;
+	}
 }
 
 
