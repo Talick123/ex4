@@ -89,13 +89,14 @@ int main(int argc, char *argv[])
   //sends message to yazranim when the array is filled to sends -1?
   //prints number of different primes received
 
-  //TODO: close fifo
+  //close fifo
+	fclose(input_file);
+	fclose(fifo1_file);
+	fclose(fifo2_file);
+	fclose(fifo3_file);
+
   return EXIT_SUCCESS;
 }
-
-
-
-
 
 //=================================================================================
 

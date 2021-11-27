@@ -118,7 +118,7 @@ void handle_child(int msqid, struct Msgbuf &msg)
       }
 
       //reads from father
-      if(msgrv(msqid, &msg, sizeof(struct Data), getpid() , 0) == -1)
+      if(msgrcv(msqid, &msg, sizeof(struct Data), getpid() , 0) == -1)
       {
         perror("msgrcv failed");
         exit(EXIT_SUCCESS);

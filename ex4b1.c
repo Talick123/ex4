@@ -125,7 +125,7 @@ void fill_array(int msqid, pid_t ch_pid[], struct Msgbuf &msg)
 	while(filled < ARR_SIZE)
 	{
     //reads from queue prime
-    if(msgrv(msqid, &msg, sizeof(struct Data), 1, 0) == -1)
+    if(msgrcv(msqid, &msg, sizeof(struct Data), 1, 0) == -1)
     {
       perror("msgrcv failed");
       exit(EXIT_SUCCESS);

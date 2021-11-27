@@ -31,6 +31,7 @@ struct Msgbuf2{
   long _type;
   struct Data2 _data2;
 };
+
 // --------prototype section---------------------
 
 void registr(int misqid1, struct Data1 &msg1);
@@ -62,7 +63,7 @@ int main()
     exit(EXIT_FAILURE);
   }
 
-  registr(msqid1, msg1);
+  registr(msqid1, msg1); 
   read_from_user(msqid1, msg1, msqid2, msg2);
 
   return EXIT_SUCCESS;

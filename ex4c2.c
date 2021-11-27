@@ -116,7 +116,7 @@ void read_requests(int misqid1, struct Data1 &msg1, int misqid2, struct Data2 &m
 
   while(true)
   {
-    if(msgrv(msqid2, &msg2, sizeof(struct Data2), 2, 0) == -1)
+    if(msgrcv(msqid2, &msg2, sizeof(struct Data2), 2, 0) == -1)
     {
       perror("msgrcv failed");
       exit(EXIT_SUCCESS);
@@ -131,7 +131,7 @@ void read_requests(int misqid1, struct Data1 &msg1, int misqid2, struct Data2 &m
       perror("msgsnd failed");
       exit(EXIT_FAILURE);
     }
-    if(msgrv(msqid1, &msg1, sizeof(struct Data2), getpid(), 0) == -1)//receiving answer (maybe sleep a bit before)
+    if(msgrcv(msqid1, &msg1, sizeof(struct Data2), getpid(), 0) == -1)//receiving answer (maybe sleep a bit before)
     {
       perror("msgrcv failed");
       exit(EXIT_SUCCESS);
@@ -161,7 +161,6 @@ void read_requests(int misqid1, struct Data1 &msg1, int misqid2, struct Data2 &m
       perror("msgsnd failed");
       exit(EXIT_FAILURE);
     }
-
   }
 }
 
@@ -169,14 +168,40 @@ void read_requests(int misqid1, struct Data1 &msg1, int misqid2, struct Data2 &m
 
 int is_prime(int num)
 {
-
+	int i;
+	for(i = 2; i*i < num; i++)
+	{
+		if(num % i == 0)
+			return false;//change
+	}
+	return true;//change
 }
 
 //-------------------------------------------------
 
 int is_palindrome(char *string)
 {
-
+	//     // Initialise flag to zero.
+	//     int flag = 0;
+	//
+	//     // Loop till array size n/2.
+	//     for (int i = 0; i <= n / 2 && n != 0; i++) {
+	//
+	//         // Check if first and last element are different
+	//         // Then set flag to 1.
+	//         if (arr[i] != arr[n - i - 1]) {
+	//             flag = 1;
+	//             break;
+	//         }
+	//     }
+	//
+	//     // If flag is set then print Not Palindrome
+	//     // else print Palindrome.
+	//     if (flag == 1)
+	//         cout << "Not Palindrome";
+	//     else
+	//         cout << "Palindrome";
+	//
 }
 
 
