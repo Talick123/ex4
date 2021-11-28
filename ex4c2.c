@@ -131,7 +131,7 @@ void read_requests(int misqid1, struct Data1 &msg1, int misqid2, struct Data2 &m
       perror("msgsnd failed");
       exit(EXIT_FAILURE);
     }
-    if(msgrv(msqid1, &msg1, sizeof(struct Data2), getpid(), 0) == -1)//receiving answer (maybe sleep a bit before)
+    if(msgrcv(msqid1, &msg1, sizeof(struct Data2), getpid(), 0) == -1)//receiving answer (maybe sleep a bit before)
     {
       perror("msgrcv failed");
       exit(EXIT_SUCCESS);

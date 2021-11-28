@@ -27,6 +27,7 @@ const int ARGC_SIZE = 5;
 const int NUM_OF_GEN = 3;
 const int START = 1;
 const int END = -1;
+
 // --------struct section------------------------
 
 //TODO: CHANGE TO RECEIVE ID (1, 2, OR 3) INSTEAD OF PID)

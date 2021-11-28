@@ -86,7 +86,7 @@ void read_requests(int msqid, struct Msgbuf &msg)
 
   while(true)
   {
-    if(msgrv(msqid, &msg, sizeof(struct Data), 1, 0) == -1)
+    if(msgrcv(msqid, &msg, sizeof(struct Data), 1, 0) == -1)
     {
       perror("msgrcv failed");
       exit(EXIT_SUCCESS);
