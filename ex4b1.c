@@ -61,23 +61,23 @@ int main()
   //creating external id for message queue
   if((key = ftok(".",'4')) == -1)
   {
-    perror("ftok failed");
+    perror("ftok failed\n");
     exit(EXIT_FAILURE);
   }
 
   //creating internal id for message queue
   if((msqid = msgget(key, 0600 | IPC_CREAT | IPC_EXCL)) == -1)
   {
-    perror("msgget failed");
+    perror("msgget failed\n");
     exit(EXIT_FAILURE);
   }
 
   //receiving 3 ones from children
-  for(index = 1; index <= NUM_OF_GEN; index++)
+  for(index = 0; index < NUM_OF_GEN; index++)
   {
     if(msgrv(msqid, &msg, sizeof(struct Data), 1, 0) == -1)
     {
-      perror("msgrcv failed");
+      perror("msgrcv failed\n");
       exit(EXIT_SUCCESS);
     }
     if(msg._data._status == START)
@@ -86,23 +86,11 @@ int main()
       continue;
     }
     else
-      printf("i received %d", msg._data._status);
+      printf("i received %d\n", msg._data._status);
   }
 
-  /*
-  //sending 1's to all the children
-  msg._data._status = START;
-  for(index = 1; index <= NUM_OF_GEN; index++)
-  {
-    if(msgsnd(msqid, &msf, sizeof(struct Data), 0) == -1)
-    {
-      perror("msgsnd failed");
-      exit(EXIT_FAILURE);
-    }
-  }*/
-
-  for(index = 1; index <= NUM_OF_GEN; index++)
-    kill(ch_pid, SIGUSR1); //each child has a sigusr1 catcher
+  for(index = 0; index < NUM_OF_GEN; index++)
+    kill(ch_pid[index], SIGUSR1); //each child has a sigusr1 catcher
 
 
   //starts to fill
@@ -127,7 +115,7 @@ void fill_array(int msqid, pid_t ch_pid[], struct Msgbuf &msg)
     //reads from queue prime
     if(msgrcv(msqid, &msg, sizeof(struct Data), 1, 0) == -1)
     {
-      perror("msgrcv failed");
+      perror("msgrcv failed\n");
       exit(EXIT_SUCCESS);
     }
     msg._type = msg._data._cpid; //gets ready to send to proper child
@@ -136,7 +124,7 @@ void fill_array(int msqid, pid_t ch_pid[], struct Msgbuf &msg)
     //sends to child number of times it received that prime
     if(msgsnd(msqid, &msg, sizeof(struct Data), 0) == -1)
     {
-      perror("msgsnd failed");
+      perror("msgsnd failed\n");
       exit(EXIT_FAILURE);
     }
 
@@ -149,9 +137,9 @@ void fill_array(int msqid, pid_t ch_pid[], struct Msgbuf &msg)
   for(index = 1; index <= NUM_OF_GEN; index++)
   {
     msg._type = ch_pid[index]; //sending to proper child
-    if(msgsnd(msqid, &msf, sizeof(struct Data), 0) == -1)
+    if(msgsnd(msqid, &msg, sizeof(struct Data), 0) == -1)
     {
-      perror("msgsnd failed");
+      perror("msgsnd failed\n");
       exit(EXIT_FAILURE);
     }
   }
@@ -168,7 +156,7 @@ void print_data(int arr[])
 	find_data(arr, counter, max, min);
 
 	printf("The number of different primes received is: %d\n", counter);
-	printf("The max prime is: %d. The min primes is: %d", max, min);
+	printf("The max prime is: %d. The min primes is: %d\n", max, min);
 }
 
 //-------------------------------------------------
@@ -196,7 +184,5 @@ void reset_arr(int arr[], int size_arr)
 {
 	int i;
 	for(i = 0; i < size_arr; i++)
-	{
 		arr[i] = 0;
-	}
 }

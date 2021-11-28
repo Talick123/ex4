@@ -58,19 +58,19 @@ int main(int argc, char *argv[])
   signal(SIGUSR1, catch_sigusr1);
 
   check_argv(argc);
-	srand(arcv[1]);
+	srand(atoi(argv[1]));
 
   //creating external id for message queue
   if((key = ftok(".",'4')) == -1)
   {
-    perror("ftok failed");
+    perror("ftok failed\n");
     exit(EXIT_FAILURE);
   }
 
   //creating internal id for message queue
   if((msqid = msgget(key,0)) == -1)
   {
-    perror("msgget failed");
+    perror("msgget failed\n");
     exit(EXIT_FAILURE);
   }
 
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
   msg._data._cpid = getpid();
   if(msgsnd(msqid, &msg, sizeof(struct Data), 0) == -1)
   {
-    perror("msgsnd failed");
+    perror("msgsnd failed\n");
     exit(EXIT_FAILURE);
   }
 
@@ -112,14 +112,14 @@ void handle_child(int msqid, struct Msgbuf &msg)
       //sends to father
       if(msgsnd(msqid, &msg, sizeof(struct Data), 0) == -1)
       {
-        perror("msgsnd failed");
+        perror("msgsnd failed\n");B
         exit(EXIT_FAILURE);
       }
 
       //reads from father
       if(msgrcv(msqid, &msg, sizeof(struct Data), getpid() , 0) == -1)
       {
-        perror("msgrcv failed");
+        perror("msgrcv failed\n");
         exit(EXIT_SUCCESS);
       }
 
@@ -149,9 +149,9 @@ void check(int status,int prime, int &max, int &counter)
 void print_and_end(int max, int counter)
 {
 		if(counter == 0)
-			printf("Process %d sent %d primes", (int)getpid(), counter);
+			printf("Process %d sent %d primes\n", (int)getpid(), counter);
 		else
-			printf("Process %d sent the prime %d, %d times", (int)getpid(), max, counter);
+			printf("Process %d sent the prime %d, %d times\n", (int)getpid(), max, counter);
 
 		exit(EXIT_SUCCESS);
 }

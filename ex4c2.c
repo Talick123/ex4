@@ -32,24 +32,24 @@ const int REGISTER = 1;
 
 // --------struct section------------------------
 
-struct Data1 {
+struct Data1 { //to registry
 	pid_t _cpid; //child pid
   int _status;
 };
 
-struct Msgbuf1{
+struct Msgbuf1{ //to registry
   long _type;
   struct Data1 _data1;
 };
 
-struct Data2 {
+struct Data2 { //to customer
 	pid_t _cpid; //child pid
   int _status;
   int _num;
   char* _string;
 };
 
-struct Msgbuf2{
+struct Msgbuf2{ //to customer
   long _type;
   struct Data2 _data2;
 };
@@ -71,11 +71,12 @@ int main()
   key_t key1, key2;
 
   signal(SIGINT, catch_int);
+	
   //creating external id for message queue
   if((key2 = ftok(".",'d')) == -1 ||
       (key1 = ftok(".", 'c')) == -1)
   {
-    perror("ftok failed");
+    perror("ftok failed\n");
     exit(EXIT_FAILURE);
   }
 
@@ -83,7 +84,7 @@ int main()
   if((msqid2 = msgget(key2, 0600 | IPC_CREAT | IPC_EXCL)) == -1 ||
       ((msqid1 = msgget(key1, 0)) == -1))
   {
-    perror("msgget failed");
+    perror("msgget failed\n");
     exit(EXIT_FAILURE);
   }
 
@@ -101,7 +102,7 @@ void catch_int(int signum)
 	//ends
 	if(msgctl(misqid2, IPC_RMID, NULL) == -1)
 	{
-		perror("msgctl faild");
+		perror("msgctl faild\n");
 		exit(EXIT_FAILURE);
 	}
 	exit(EXIT_SUCCESS);
@@ -117,7 +118,7 @@ void read_requests(int misqid1, struct Data1 &msg1, int misqid2, struct Data2 &m
   {
     if(msgrcv(msqid2, &msg2, sizeof(struct Data2), 2, 0) == -1)
     {
-      perror("msgrcv failed");
+      perror("msgrcv failed\n");
       exit(EXIT_SUCCESS);
     }
 
@@ -127,12 +128,12 @@ void read_requests(int misqid1, struct Data1 &msg1, int misqid2, struct Data2 &m
     msg1._data1._status = DOESEXIST;
     if(msgsnd(msqid1, &msg1, sizeof(struct Data1), 0) == -1) //sending request
     {
-      perror("msgsnd failed");
+      perror("msgsnd failed\n");
       exit(EXIT_FAILURE);
     }
     if(msgrcv(msqid1, &msg1, sizeof(struct Data2), getpid(), 0) == -1)//receiving answer (maybe sleep a bit before)
     {
-      perror("msgrcv failed");
+      perror("msgrcv failed\n");
       exit(EXIT_SUCCESS);
     }
 
@@ -157,7 +158,7 @@ void read_requests(int misqid1, struct Data1 &msg1, int misqid2, struct Data2 &m
     msg2._data2._status = status;
     if(msgsnd(msqid2, &msg2, sizeof(struct Data), 0) == -1)
     {
-      perror("msgsnd failed");
+      perror("msgsnd failed\n");
       exit(EXIT_FAILURE);
     }
   }
@@ -185,13 +186,17 @@ int is_palindrome(char *string)
    length = strlen(string);
    forward = string;
    reverse = forward + length - 1;
-   for (forward = string; reverse >= forward;) {
-      if (*reverse == *forward) {
+   for (forward = string; reverse >= forward;)
+	 {
+      if (*reverse == *forward)
+			{
          reverse--;
          forward++;
-      } else
+      }
+			 else
          break;
-   } if (forward > reverse)
+   }
+	 if (forward > reverse)
       return TRUE;
    else
       return FALSE;

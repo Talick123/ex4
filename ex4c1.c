@@ -18,7 +18,7 @@
 enum Requests {ADD, INARR, REMOVE};
 enum Add_answers {ADDED, EXISTS, FULL};
 enum Exists_answers {DOESNTEXIST, DOESEXIST};
-const int ARR_SIZE = 10; //what do i put hereeeeee
+const int ARR_SIZE = 10; //what do i put hereeeeee 100?
 
 // --------struct section------------------------
 
@@ -49,17 +49,18 @@ int main()
   key_t key;
 
   signal(SIGINT, catch_int);
+
   //creating external id for message queue
   if((key = ftok(".",'c')) == -1)
   {
-    perror("ftok failed");
+    perror("ftok failed\n");
     exit(EXIT_FAILURE);
   }
 
   //creating internal id for message queue
   if((msqid = msgget(key, 0600 | IPC_CREAT | IPC_EXCL)) == -1)
   {
-    perror("msgget failed");
+    perror("msgget failed\n");
     exit(EXIT_FAILURE);
   }
 
@@ -75,9 +76,9 @@ void catch_int(int signum)
 	// Q: misqid1 global?
 	//release queue - can it do it here or does it need to do in main
 	//ends
-	if(msgctl(misqid1, IPC_RMID, NULL) == -1)
+	if(msgctl(msqid1, IPC_RMID, NULL) == -1)
 	{
-		perror("msgctl faild");
+		perror("msgctl failed\n");
 		exit(EXIT_FAILURE);
 	}
 	exit(EXIT_SUCCESS);
@@ -95,7 +96,7 @@ void read_requests(int msqid, struct Msgbuf &msg)
   {
     if(msgrcv(msqid, &msg, sizeof(struct Data), 1, 0) == -1)
     {
-      perror("msgrcv failed");
+      perror("msgrcv failed\n");
       exit(EXIT_SUCCESS);
     }
     switch(msg._data._status)
@@ -110,18 +111,22 @@ void read_requests(int msqid, struct Msgbuf &msg)
         break;
       case REMOVE:
         //removes from array
-        status = remove_from_arr(arr, msg._data._cpid, filled);
+        remove_from_arr(arr, msg._data._cpid, filled);
         break;
     }
-    msg._type = msg._data._cpid; //prepares to send status back to sender
-    msg._data._status = status;
 
-    //sends status to sender
-    if(msgsnd(msqid, &msg, sizeof(struct Data), 0) == -1)
-    {
-      perror("msgsnd failed");
-      exit(EXIT_FAILURE);
-    }
+		if(msg._data._status != REMOVE)
+		{
+	    msg._type = msg._data._cpid; //prepares to send status back to sender
+	    msg._data._status = status;
+
+	    //sends status to sender
+	    if(msgsnd(msqid, &msg, sizeof(struct Data), 0) == -1)
+	    {
+	      perror("msgsnd failed\n");
+	      exit(EXIT_FAILURE);
+	    }
+		}
 
   }
 }
