@@ -64,13 +64,11 @@ int main(int argc, char *argv[])
 	return EXIT_SUCCESS;
 }
 
-
 void handle_child(FILE *fifo_w, FILE *fifo_r)
 {
 	struct Data data;
-	data._cpid = getpid(); //doesnt send pid, sends id which is arv[2]
+	data._cpid = getpid(); //doesnt send pid, sends id which is argv[2]
 	int status, num, max = 0, counter = 0; //start at 0 in case didnt get to send any
-
 
 	while(true)
 	{

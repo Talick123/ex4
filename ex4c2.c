@@ -1,26 +1,19 @@
-//
-// void is_palindrome(int arr[], int n)
-// {
-//     // Initialise flag to zero.
-//     int flag = 0;
-//
-//     // Loop till array size n/2.
-//     for (int i = 0; i <= n / 2 && n != 0; i++) {
-//
-//         // Check if first and last element are different
-//         // Then set flag to 1.
-//         if (arr[i] != arr[n - i - 1]) {
-//             flag = 1;
-//             break;
-//         }
-//     }
-//
-//     // If flag is set then print Not Palindrome
-//     // else print Palindrome.
-//     if (flag == 1)
-//         cout << "Not Palindrome";
-//     else
-//         cout << "Palindrome";
+// int solve(char *string){
+//    int length;
+//    char *forward, *reverse;
+//    length = strlen(string);
+//    forward = string;
+//    reverse = forward + length - 1;
+//    for (forward = string; reverse >= forward;) {
+//       if (*reverse == *forward) {
+//          reverse--;
+//          forward++;
+//       } else
+//          break;
+//    } if (forward > reverse)
+//       return 1;
+//    else
+//       return 0;
 // }
 
 
@@ -33,7 +26,7 @@
 // --------const and enum section------------------
 
 enum Requests {PRIME, PALINDROME};
-enum Answers {FALSE, TRUE, FAIL = -1}; //MAYBE JUST CONVERT BOOLS?
+enum Answers {FALSE = 0, TRUE = 1, FAIL = -1}; //MAYBE JUST CONVERT BOOLS?
 enum Exists_answers {DOESNTEXIST, DOESEXIST};
 const int REGISTER = 1;
 
@@ -101,11 +94,17 @@ int main()
 
 //-------------------------------------------------
 
-
 void catch_int(int signum)
 {
-  //release queue - can it do it here or does it need to do in main
-  //ends
+	// Q: misqid2 global?
+	//release queue - can it do it here or does it need to do in main
+	//ends
+	if(msgctl(misqid2, IPC_RMID, NULL) == -1)
+	{
+		perror("msgctl faild");
+		exit(EXIT_FAILURE);
+	}
+	exit(EXIT_SUCCESS);
 }
 
 //-------------------------------------------------
@@ -116,7 +115,7 @@ void read_requests(int misqid1, struct Data1 &msg1, int misqid2, struct Data2 &m
 
   while(true)
   {
-    if(msgrv(msqid2, &msg2, sizeof(struct Data2), 2, 0) == -1)
+    if(msgrcv(msqid2, &msg2, sizeof(struct Data2), 2, 0) == -1)
     {
       perror("msgrcv failed");
       exit(EXIT_SUCCESS);
@@ -161,7 +160,6 @@ void read_requests(int misqid1, struct Data1 &msg1, int misqid2, struct Data2 &m
       perror("msgsnd failed");
       exit(EXIT_FAILURE);
     }
-
   }
 }
 
@@ -169,14 +167,34 @@ void read_requests(int misqid1, struct Data1 &msg1, int misqid2, struct Data2 &m
 
 int is_prime(int num)
 {
-
+	int i;
+	for(i = 2; i*i < num; i++)
+	{
+		if(num % i == 0)
+			return FALSE;//change
+	}
+	return TRUE;//change
 }
 
 //-------------------------------------------------
 
 int is_palindrome(char *string)
 {
-
+	int length;
+   char *forward, *reverse;
+   length = strlen(string);
+   forward = string;
+   reverse = forward + length - 1;
+   for (forward = string; reverse >= forward;) {
+      if (*reverse == *forward) {
+         reverse--;
+         forward++;
+      } else
+         break;
+   } if (forward > reverse)
+      return TRUE;
+   else
+      return FALSE;
 }
 
 

@@ -16,7 +16,7 @@
 // --------const and enum section------------------
 
 enum Requests {ADD, INARR, REMOVE};
-enum Add_answers {ADDED, FULL, EXISTS};
+enum Add_answers {ADDED, EXISTS, FULL};
 enum Exists_answers {DOESNTEXIST, DOESEXIST};
 const int ARR_SIZE = 10; //what do i put hereeeeee
 
@@ -72,8 +72,15 @@ int main()
 
 void catch_int(int signum)
 {
-  //release queue - can it do it here or does it need to do in main
-  //ends
+	// Q: misqid1 global?
+	//release queue - can it do it here or does it need to do in main
+	//ends
+	if(msgctl(misqid1, IPC_RMID, NULL) == -1)
+	{
+		perror("msgctl faild");
+		exit(EXIT_FAILURE);
+	}
+	exit(EXIT_SUCCESS);
 }
 
 //-------------------------------------------------
@@ -155,8 +162,13 @@ int remove_from_arr(pid_t arr[], pid_t pid, int &filled)
   int index;
 
   for(index = 0; index < filled; index++)
+		//remove pid and filled--
     if(arr[index] == pid)
-      //remove pid and filled--
+		{
+			//איך נדע לאיפה להוסיף אם מחקנו לפעמים מהאמצע?
+			arr[index] = 0; // ?
+			filled--;
+		}
 }
 
 
