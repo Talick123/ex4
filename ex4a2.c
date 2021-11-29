@@ -1,3 +1,41 @@
+/*
+	File: ex4a1.c ex4a2.c
+	Generate and Collect Primes from Named Pipe
+	=====================================================================
+	Written by: Tali Kalev, ID:208629691, Login: talikal
+			and	Noga Levy, ID:315260927, Login: levyno
+
+	This program runs with 4 different processes. Three processes that generates
+	random numbers, when the number is prime the process send it to main process via named pipe.
+	And one process - the main process that collect the primes send from the other processes
+	via named pipe and insert them into array, when the main process gets 1000 primes,
+	alert to the 3 other process to end, prints the minimum prime, max prime and number of
+	different numbers in the array, close all named pipe and finish.
+	when the other processes get the massage from main process to end they prints the
+	prime number they send the most to main process, and finish.
+
+	Compile: gcc -Wall ex4a1.c -o ex4a1
+	         gcc -Wall ex4a2.c -o ex4a2
+	     (ex4a1 = main process, ex4a2 = sub process)
+
+	Run: for start run the main process with the 4 named pipe names.
+	    Then, run 3 times the sub processes and send to the vector
+	    arguments the main named pipe 'fifo0' and the number of process (1-3):
+	        ./ex4a1 fifo0 fifo1 fifo2 fifo3
+	        ./ex4a2 fifo0 1
+	        ./ex4a2 fifo0 2
+	        ./ex4a2 fifo0 3
+
+	Input: No Input
+
+	Output:
+	    From main process (ex4a1) = minimum prime, max prime and number of
+	    different numbers in the array.
+	    Example: The number of different primes received is: 168
+	             The max prime is: 997. The min primes is: 2
+	    From sub process (ex4a2) = prime number they send the most to main process
+	    Example: Process 1101373 sent the prime 233, 14 times
+*/
 
 // --------include section------------------------
 
