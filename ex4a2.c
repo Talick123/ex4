@@ -26,72 +26,76 @@
 
 // --------const section------------------------
 
-const int ARR_SIZE = 1000;
+const int ARR_SIZE = 100;
 const int ARGC_SIZE = 3;
 const int START = 1;
 const int END = -1;
 
-// --------struct section------------------------
-
-struct Data {
-	pid_t _cpid; //child pid T: change to child num or something like that?
-	int _prime; //
-};
-
 // --------prototype section------------------------
 
-void handle_child(FILE *fifo_w, FILE *fifo_r);
-bool prime(int num);
+void handle_child(FILE *fifo_w, FILE *fifo_r, int childnum);
+bool is_prime(int num);
 void check_argv(int argc);
-void check(int status,int prime, int &max, int &counter);
+void check(int status,int prime, int *max, int *counter);
 void print_and_end(int max, int counter);
+FILE * open_file(char* filename,  char *mode);
+void start_proc(FILE *input_file, FILE *fifo_file, int childnum);
+
 
 // --------main section------------------------
 
 int main(int argc, char *argv[])
 {
-	int status;
 	check_argv(argc);
 	srand(atoi(argv[2]));
-	//TODO: add error if cannot open
-	FILE *input_file = fopen(argv[1] ,"r");
-	//char *fifo_name = strcat("fifo", argv[2]); //TODO: switch to different format
-	//i think this is the proper way: (i might be wrong)
+
 	char fifo_name[5] = "fifo"; //5 as a const?
 	strcat(fifo_name, argv[2]);
-	FILE *fifo_file = fopen(fifo_name ,"w");
-
-
-
-	fprintf(input_file, " %d", argv[2]); //sends to aba his number to say he is ready
-	fscanf(fifo_file, "%d", &status); //reads command to start
-
-	if(status = START)
-		handle_child(input_file, fifo_file, atoi(argv[2]));
+	printf("before open file\n");
+	FILE *input_file = open_file(argv[1] ,"w");
+	FILE *fifo_file = open_file(fifo_name ,"r");
+	printf("after open file\n");
+	start_proc(input_file, fifo_file, atoi(argv[2]));
 
 	return EXIT_SUCCESS;
 }
 
 //-------------------------------------------------
 
+void start_proc(FILE *input_file, FILE *fifo_file, int childnum)
+{
+	int status;
+	//sleep(childnum);
+	printf("k send from %d\n", childnum);
+	fprintf(input_file, " %d\n", childnum); //sends to aba his number to say he is ready
+	fflush(input_file);
+	printf("after flush\n");
+	fscanf(fifo_file, " %d", &status); //reads command to start
+
+	if(status == START)
+	{
+		puts("ok start");
+		handle_child(input_file, fifo_file, childnum);
+	}
+}
+
+//-------------------------------------------------
+
 void handle_child(FILE *fifo_w, FILE *fifo_r, int childnum)
 {
-	struct Data data;
-	data._cpid = childnum;
 	int status, num, max = 0, counter = 0; //start at 0 in case didnt get to send any
 
 	while(true)
 	{
 		num = rand()%(ARR_SIZE -1) + 2; //randomize num between 2 to 1000
 
-		if(prime(num))
+		if(is_prime(num))
 		{
 			//send to father num + getpid() using pipe_fd1
-			data._prime = num; // save prime num in struct
 			// write to pipe the data (pid and prime num)
-			fprintf(fifo_w, " %d %d", data._cpid, data._prime ); //newline???
+			fprintf(fifo_w, " %d %d\n", childnum, num ); //newline???
 			fscanf(fifo_r," %d", &status);
-			check(status, num, max, counter);
+			check(status, num, &max, &counter);
 		}
 	}
 }
@@ -99,15 +103,16 @@ void handle_child(FILE *fifo_w, FILE *fifo_r, int childnum)
 //-------------------------------------------------
 
 //checks number received from aba and saves if new max or ends if necessary
-void check(int status,int prime, int &max, int &counter)
+void check(int status,int prime, int *max, int *counter)
 {
 	if(status == END)
-		print_and_end(max, counter);
+		print_and_end((*max), (*counter));
 
-	if(status > counter)
+	if(status > (*counter))
 	{
-		counter = status;
-		max = prime;
+		//ken? lo?
+		(*counter) = status;
+		(*max) = prime;
 	}
 }
 
@@ -126,7 +131,7 @@ void print_and_end(int max, int counter)
 //-------------------------------------------------
 
 //gets integer and check if is prime
-bool prime(int num)
+bool is_prime(int num)
 {
 	int i;
 	for(i = 2; i*i < num; i++)
@@ -146,4 +151,18 @@ void check_argv(int argc )
 		printf("Error! Incorrect number of arguments.\n");
 		exit(EXIT_FAILURE);
 	}
+}
+
+//-------------------------------------------------
+
+FILE * open_file(char* filename,  char *mode)
+{
+	FILE *fp = fopen(filename, mode);
+
+	if (fp == NULL)
+	{
+		printf("Error! cannot open %s  ", filename);
+		exit (EXIT_FAILURE);
+	}
+    return fp;
 }
