@@ -59,13 +59,14 @@ int main()
 	int msqid, index;
 	key_t key;
 
+
 	//creating external id for message queue
 	if((key = ftok(".",'4')) == -1)
-		perror_and_exit("ftok");
+		perror_and_exit("ftok failed");
 
 	//creating internal id for message queue
 	if((msqid = msgget(key, 0600 | IPC_CREAT | IPC_EXCL)) == -1 && errno != EEXIST)
-		perror_and_exit("msgget");
+		perror_and_exit("msgget failed");
 
 	printf("waiting to receive from children\n");
 	//receiving 3 ones from children
@@ -128,7 +129,7 @@ void fill_array(int msqid, pid_t ch_pid[], struct Msgbuf *msg)
 		printf("reading prime number\n");
 		//reads from queue prime
 		if(msgrcv(msqid, msg, sizeof(struct Data), 1, 0) == -1) //&msg??
-			perror_and_exit("msgrcv");
+			perror_and_exit("msgrcv failed");
 
 		printf("i received %d\n",(*msg)._data._prime);
 		printf("preparing to send back\n");
@@ -138,7 +139,7 @@ void fill_array(int msqid, pid_t ch_pid[], struct Msgbuf *msg)
 		printf("sending back\n");
 		//sends to child number of times it received that prime
 		if((msgsnd(msqid, msg, sizeof(struct Data), 0)) == -1)
-			perror_and_exit("msgsnd");
+			perror_and_exit("msgsnd failed");
 
 		primes_count[(*msg)._data._prime]++;	//adds to counter
 		filled++;				//increases fill number
@@ -153,7 +154,7 @@ void fill_array(int msqid, pid_t ch_pid[], struct Msgbuf *msg)
 	{
 		msg->_type = ch_pid[index]; //sending to proper child
 		if(msgsnd(msqid, msg, sizeof(struct Data), 0) == -1)
-			perror_and_exit("msgsnd");
+			perror_and_exit("msgsnd failed");
 	}
 	sleep(3);
 	//prints number of different primes, max and min received
@@ -203,7 +204,6 @@ void reset_arr(int arr[], int size_arr)
 void perror_and_exit(char *action)
 {
 	printf("about to perror\n");
-	strcat(action, "failed");
 
 	perror(action);
 	exit(EXIT_FAILURE);

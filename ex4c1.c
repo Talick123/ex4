@@ -1,82 +1,75 @@
 
-/*
-  QUESTIONS:
-    - targil doesnt say how big the data structure should beeeeee
-    -should we make one type of struct with all the information all programs need
-     or keep with seperate structs according to message?
-*/
-
-
 // --------include section------------------------
 
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include <errno.h>
 
 // --------const and enum section------------------
 
 enum Requests {ADD, INARR, REMOVE};
 enum Add_answers {ADDED, EXISTS, FULL};
 enum Exists_answers {DOESNTEXIST, DOESEXIST};
-const int ARR_SIZE = 10; //what do i put hereeeeee 100?
+const int ARR_SIZE = 100;
+int msqid;
 
 // --------struct section------------------------
 
 struct Data {
 	pid_t _cpid; //child pid
-  int _status;
+	int _status;
 };
 
 struct Msgbuf{
-  long _type;
-  struct Data _data;
+	long _type;
+	struct Data _data;
 };
 // --------prototype section---------------------
 
 void catch_int(int signum);
-void read_requests(int msqid, struct Msgbuf &msg);
-int add_to_arr(pid_t arr[], pid_t pid, int &filled);
+void read_requests(int msqid, struct Msgbuf *msg);
+int add_to_arr(pid_t arr[], pid_t pid, int *filled);
 int in_arr(pid_t arr[], pid_t pid, int filled);
-int remove_from_arr(pid_t arr[], pid_t pid, int &filled);
+void remove_from_arr(pid_t arr[], pid_t pid, int *filled);
 bool exists_in_arr(pid_t arr[], pid_t pid, int filled);
 
 // --------main section--------------------------
 
 int main()
 {
-  struct Msgbuf msg;
-  int msqid;
-  key_t key;
+	struct Msgbuf msg;
+	key_t key;
 
-  signal(SIGINT, catch_int);
+	signal(SIGINT, catch_int);
 
-  //creating external id for message queue
-  if((key = ftok(".",'c')) == -1)
-  {
-    perror("ftok failed\n");
-    exit(EXIT_FAILURE);
-  }
+	//creating external id for message queue
+	if((key = ftok(".",'c')) == -1)
+	{
+		perror("ftok failed\n");
+		exit(EXIT_FAILURE);
+	}
 
-  //creating internal id for message queue
-  if((msqid = msgget(key, 0600 | IPC_CREAT | IPC_EXCL)) == -1)
-  {
-    perror("msgget failed\n");
-    exit(EXIT_FAILURE);
-  }
+	//creating internal id for message queue
+	if((msqid = msgget(key, 0600 | IPC_CREAT | IPC_EXCL)) == -1 && errno != EEXIST)
+	{
+		perror("msgget failed\n");
+		exit(EXIT_FAILURE);
+	}
+	printf("msqid is: %d\n",msqid);
+	read_requests(msqid, &msg);
 
-  read_requests(msqid, msg);
-
-  return EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }
 
 //-------------------------------------------------
 
 void catch_int(int signum)
 {
-	// Q: misqid1 global?
-	//release queue - can it do it here or does it need to do in main
-	//ends
-	if(msgctl(msqid1, IPC_RMID, NULL) == -1)
+	if(msgctl(msqid, IPC_RMID, NULL) == -1)
 	{
 		perror("msgctl failed\n");
 		exit(EXIT_FAILURE);
@@ -86,66 +79,65 @@ void catch_int(int signum)
 
 //-------------------------------------------------
 
-void read_requests(int msqid, struct Msgbuf &msg)
+void read_requests(int msqid, struct Msgbuf *msg)
 {
-  //define data structure that holds pid
   pid_t arr[ARR_SIZE];
   int status, filled = 0;
 
   while(true)
   {
-    if(msgrcv(msqid, &msg, sizeof(struct Data), 1, 0) == -1)
+    if(msgrcv(msqid, msg, sizeof(struct Data), 1, 0) == -1)
     {
       perror("msgrcv failed\n");
       exit(EXIT_SUCCESS);
     }
-    switch(msg._data._status)
+
+    switch((*msg)._data._status)
     {
-      case ADD:
-        //checks if exist in array, or if full,  adds if it can
-        status = add_to_arr(arr, msg._data._cpid, filled);
-        break;
-      case INARR:
-        //checks if it exists in array
-        status = in_arr(arr, msg._data._cpid, filled);
-        break;
-      case REMOVE:
-        //removes from array
-        remove_from_arr(arr, msg._data._cpid, filled);
-        break;
+	  case ADD:
+		//checks if exist in array, or if full,  adds if it can
+		status = add_to_arr(arr, (*msg)._data._cpid, &filled);
+		break;
+	  case INARR:
+		//checks if it exists in array
+		status = in_arr(arr, (*msg)._data._cpid, filled);
+		break;
+	  case REMOVE:
+		//removes from array
+		remove_from_arr(arr, (*msg)._data._cpid, &filled);
+		break;
     }
 
-		if(msg._data._status != REMOVE)
+	if((*msg)._data._status != REMOVE)
+	{
+		(*msg)._type = (*msg)._data._cpid; //prepares to send status back to sender
+		(*msg)._data._status = status;
+
+		//sends status to sender
+		if(msgsnd(msqid, msg, sizeof(struct Data), 0) == -1)
 		{
-	    msg._type = msg._data._cpid; //prepares to send status back to sender
-	    msg._data._status = status;
-
-	    //sends status to sender
-	    if(msgsnd(msqid, &msg, sizeof(struct Data), 0) == -1)
-	    {
-	      perror("msgsnd failed\n");
-	      exit(EXIT_FAILURE);
-	    }
+		  perror("msgsnd failed\n");
+		  exit(EXIT_FAILURE);
 		}
-
+	}
   }
 }
 
 //-------------------------------------------------
 
-int add_to_arr(pid_t arr[], pid_t pid, int &filled)
+int add_to_arr(pid_t arr[], pid_t pid, int *filled)
 {
 
   //checks if array is already full
-  if(filled == (ARR_SIZE - 1))
+  if(*filled == (ARR_SIZE - 1))
     return FULL;
 
   //checks in filled part of array if already exists
-  if(exists_in_arr(arr, pid, filled))
+  if(exists_in_arr(arr, pid, *filled))
       return EXISTS;
 
   //if does not exist, adds and returns
-  arr[++filled] = pid;
+  arr[++(*filled)] = pid;
   return ADDED;
 
 }
@@ -162,18 +154,22 @@ int in_arr(pid_t arr[], pid_t pid, int filled)
 
 //-------------------------------------------------
 
-int remove_from_arr(pid_t arr[], pid_t pid, int &filled)
+void remove_from_arr(pid_t arr[], pid_t pid, int *filled)
 {
-  int index;
+	int index, place;
 
-  for(index = 0; index < filled; index++)
-		//remove pid and filled--
-    if(arr[index] == pid)
+	for(index = 0; index < *filled; index++)
+	{
+		if(arr[index] == pid)
 		{
-			//איך נדע לאיפה להוסיף אם מחקנו לפעמים מהאמצע?
-			arr[index] = 0; // ?
-			filled--;
+			for(place = index; place < (*filled) - 1; place++)
+				arr[place] = arr[place + 1];
+
+			arr[place] = 0;
+			--(*filled);
+			break;
 		}
+	}
 }
 
 
@@ -185,7 +181,7 @@ bool exists_in_arr(pid_t arr[], pid_t pid, int filled)
 
   //checks in filled part of array if already exists
   for(index = 0; index < filled; index++)
-    if(arr[index] == pid);
+    if(arr[index] == pid)
       return true;
 
   return false;
