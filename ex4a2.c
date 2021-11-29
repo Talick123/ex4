@@ -83,17 +83,19 @@ void start_proc(FILE *input_file, FILE *fifo_file, int childnum)
 
 void handle_child(FILE *fifo_w, FILE *fifo_r, int childnum)
 {
-	int status, num, max = 0, counter = 0; //start at 0 in case didnt get to send any
-
+	int status = 0, num, max = 0, counter = 0; //start at 0 in case didnt get to send any
 	while(true)
 	{
 		num = rand()%(ARR_SIZE -1) + 2; //randomize num between 2 to 1000
+		printf("get %d\n", num);
 
 		if(is_prime(num))
 		{
 			//send to father num + getpid() using pipe_fd1
 			// write to pipe the data (pid and prime num)
-			fprintf(fifo_w, " %d %d\n", childnum, num ); //newline???
+			fprintf(fifo_w, " %d %d\n", childnum, num );
+			fflush(fifo_w);
+			sleep(childnum/3);
 			fscanf(fifo_r," %d", &status);
 			check(status, num, &max, &counter);
 		}
@@ -103,13 +105,14 @@ void handle_child(FILE *fifo_w, FILE *fifo_r, int childnum)
 //-------------------------------------------------
 
 //checks number received from aba and saves if new max or ends if necessary
-void check(int status,int prime, int *max, int *counter)
+void check(int status ,int prime, int *max, int *counter)
 {
 	if(status == END)
 		print_and_end((*max), (*counter));
 
-	if(status > (*counter))
+	else if(status > (*counter))
 	{
+
 		//ken? lo?
 		(*counter) = status;
 		(*max) = prime;
@@ -121,7 +124,7 @@ void check(int status,int prime, int *max, int *counter)
 void print_and_end(int max, int counter)
 {
 		if(counter == 0)
-			printf("Process %d sent %d primes\n", (int)getpid(), counter);
+			printf("Process %d didnt sent any prime max number of times\n", (int)getpid());
 		else
 			printf("Process %d sent the prime %d, %d times\n", (int)getpid(), max, counter);
 
@@ -134,7 +137,7 @@ void print_and_end(int max, int counter)
 bool is_prime(int num)
 {
 	int i;
-	for(i = 2; i*i < num; i++)
+	for(i = 2; i*i <= num; i++)
 	{
 		if(num % i == 0)
 			return false;

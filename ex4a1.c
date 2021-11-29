@@ -22,6 +22,7 @@
 #include <sys/wait.h>
 #include <sys/time.h>
 
+
 #include <sys/stat.h> //named pipe
 
 // --------const section------------------------
@@ -33,9 +34,10 @@ const int NUM_OF_GEN = 3;
 const int START = 1;
 const int END = -1;
 
+enum childnum { CHILD_1 = 1 , CHILD_2, CHILD_3 };
 // --------prototype section------------------------
 
-void fill_array(FILE *input_file, FILE *fifo1_file, FILE *fifo2_file, FILE* fifo3_file, pid_t child[]);
+void fill_array(FILE *input_file, FILE *fifo1_file, FILE *fifo2_file, FILE* fifo3_file);
 void find_data(int arr[], int *counter, int *max, int *min);
 void print_data(int arr[]);
 void reset_arr(int arr[], int size_arr);
@@ -50,8 +52,7 @@ void send_start(FILE *fifo_name);
 int main(int argc, char *argv[])
 {
   	//TODO: chaeck if 1 2 3 processes are connected to fifo
- 	int ch_id[NUM_OF_GEN];// = {-1, -1, -1};
-	int child, ch_counter = 0;
+	int child, i;
 
   	check_argv(argc);
   	if((mkfifo(argv[1], S_IFIFO | 0644) == -1 ||
@@ -63,64 +64,37 @@ int main(int argc, char *argv[])
   		exit(EXIT_FAILURE);
   	}
 
-	puts("before open files");
 	FILE *input_file = open_file(argv[1] ,"r");
 	FILE *fifo1_file = open_file(argv[2] ,"w");
 	FILE *fifo2_file = open_file(argv[3] ,"w");
 	FILE *fifo3_file = open_file(argv[4] ,"w");
-	puts("after open file");
+
+
 	//waits for numbers from all children in order to start(and tell them to start)
-
-	puts("AHHHHHHHHHHHHHH ");
-	/*
-	while(ch_counter < NUM_OF_GEN) //T: dont love this way, is there a better way?
+	for(i = 0; i < NUM_OF_GEN; i++)
 	{
-		puts("wait for child");
-		fscanf(input_file, " %d", &child); //probably nechsam WHHYYYYYYYY ???
-		printf("hello %d\n", child);
-
-		switch (child) {
-			case 1:
-			case 2:
-			case 3:
-				//ch_id[child -1] = child;
-				ch_counter++;
-				break;
-			default:
-				break;
-		}
-	}*/
-
-	puts("wait for child");
-	fscanf(input_file, " %d", &child);
-	printf("hello %d\n", child);
-	puts("wait for child");
-	fscanf(input_file, " %d", &child);
-	printf("hello %d\n", child);
-	puts("wait for child");
-	fscanf(input_file, " %d", &child);
-	printf("hello %d\n", child);
-
+		fscanf(input_file, " %d", &child);
+	}
 
 	send_start(fifo1_file);
 	send_start(fifo2_file);
 	send_start(fifo3_file);
 
-  fill_array(input_file, fifo1_file, fifo2_file, fifo3_file, ch_id);
+	fill_array(input_file, fifo1_file, fifo2_file, fifo3_file);
 
-  //close fifo
+	//close fifo
 	fclose(input_file);
 	fclose(fifo1_file);
 	fclose(fifo2_file);
 	fclose(fifo3_file);
 
-  return EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }
 
 //-------------------------------------------------
 
 // gets pipe of all children and the pid array
-void fill_array(FILE *input_file, FILE *fifo1_file, FILE *fifo2_file, FILE* fifo3_file, int child[])
+void fill_array(FILE *input_file, FILE *fifo1_file, FILE *fifo2_file, FILE* fifo3_file)
 {
 	int primes_count[ARR_SIZE]; //count in each index the number of times father receive this number
 	int filled = 0;
@@ -129,22 +103,25 @@ void fill_array(FILE *input_file, FILE *fifo1_file, FILE *fifo2_file, FILE* fifo
 
 	while(filled < ARR_SIZE) // while EOF ?
 	{
-    //read process id and num
+
+    	//read process id and num
 		fscanf(input_file, " %d %d", &child_id, &prime);
+
+		printf("read %d from child %d\n", prime, child_id);
 
 		//check which child sent the number depend on the pid
 		//send the counter of the prime num
-		if (child_id == child[0])
+		if (child_id == CHILD_1)
 		{
 		  fprintf(fifo1_file, " %d\n", primes_count[prime]);  //QUESTION:newline?
 		  fflush(fifo1_file);
 		}
-		else if (child_id == child[1])
+		else if (child_id == CHILD_2)
 		{
 		  fprintf(fifo2_file, " %d\n", primes_count[prime]);
 		  fflush(fifo2_file);
 		}
-		else if (child_id == child[2])
+		else if (child_id == CHILD_3)
 		{
 		  fprintf(fifo3_file, " %d\n", primes_count[prime]);
 		  fflush(fifo3_file);
@@ -154,10 +131,14 @@ void fill_array(FILE *input_file, FILE *fifo1_file, FILE *fifo2_file, FILE* fifo
 	}
 
 	//kills children
-  fprintf(fifo1_file, " %d\n", END); //newline??
-  fprintf(fifo2_file, " %d\n", END);
-  fprintf(fifo3_file, " %d\n", END);
+	fprintf(fifo1_file, " %d\n", END); //newline??
+	fflush(fifo1_file);
+	fprintf(fifo2_file, " %d\n", END);
+	fflush(fifo2_file);
+	fprintf(fifo3_file, " %d\n", END);
+	fflush(fifo3_file);
 
+	sleep(1);
 	//prints number of different primes, max and min received
 	print_data(primes_count);
 }
