@@ -1,15 +1,5 @@
 // ./ex4a1 fifo0 fifo1 fifo2 fifo3
 
-/*
-  NOTE FOR ALL PROGRAMS
-    - there are a lot of perrors
-    - id like to send to function a string and then it will print <string> failed and then exit
-*/
-
-//fills array
-//sends back to sender number of times it received that prime
-//sends message to yazranim when the array is filled to sends -1?
-//prints number of different primes received
 
 // --------include section------------------------
 
@@ -21,13 +11,11 @@
 #include <unistd.h> //for pipe
 #include <sys/wait.h>
 #include <sys/time.h>
-
-
 #include <sys/stat.h> //named pipe
 
-// --------const section------------------------
+// --------const and enum section------------------------
 
-const int ARR_SIZE = 100;
+const int ARR_SIZE = 1000;
 const int MAX_INUM = 1000;
 const int ARGC_SIZE = 5;
 const int NUM_OF_GEN = 3;
@@ -35,6 +23,7 @@ const int START = 1;
 const int END = -1;
 
 enum childnum { CHILD_1 = 1 , CHILD_2, CHILD_3 };
+
 // --------prototype section------------------------
 
 void fill_array(FILE *input_file, FILE *fifo1_file, FILE *fifo2_file, FILE* fifo3_file);
@@ -45,32 +34,37 @@ void check_argv(int argc );
 bool prime(int num);
 FILE * open_file(char* filename,  char *mode);
 void send_start(FILE *fifo_name);
-
+void write_int_to_fifo(FILE *fifo_file, int data);
+void start_process(FILE *input_file, FILE *fifo1_file, FILE *fifo2_file, FILE* fifo3_file);
+void end_process(FILE *input_file, FILE *fifo1_file, FILE *fifo2_file, FILE* fifo3_file);
+void create_all_fifo(char *argv[]);
 
 // --------main section------------------------
 
 int main(int argc, char *argv[])
 {
-  	//TODO: chaeck if 1 2 3 processes are connected to fifo
-	int child, i;
+	check_argv(argc);
 
-  	check_argv(argc);
-  	if((mkfifo(argv[1], S_IFIFO | 0644) == -1 ||
-	  mkfifo(argv[2], S_IFIFO | 0644) == -1 ||
-	  mkfifo(argv[3], S_IFIFO | 0644) == -1 ||
-	  mkfifo(argv[4], S_IFIFO | 0644) == -1) && errno != EEXIST) // ?
-  	{
-  		puts("mkfifo error\n");
-  		exit(EXIT_FAILURE);
-  	}
+	create_all_fifo(argv);
 
+	//open fifo files
 	FILE *input_file = open_file(argv[1] ,"r");
 	FILE *fifo1_file = open_file(argv[2] ,"w");
 	FILE *fifo2_file = open_file(argv[3] ,"w");
 	FILE *fifo3_file = open_file(argv[4] ,"w");
 
+	start_process(input_file, fifo1_file, fifo2_file, fifo3_file);
+	end_process(input_file, fifo1_file, fifo2_file, fifo3_file);
 
-	//waits for numbers from all children in order to start(and tell them to start)
+	return EXIT_SUCCESS;
+}
+
+//-------------------------------------------------
+
+void start_process(FILE *input_file, FILE *fifo1_file, FILE *fifo2_file, FILE* fifo3_file)
+{
+	int child, i;
+
 	for(i = 0; i < NUM_OF_GEN; i++)
 	{
 		fscanf(input_file, " %d", &child);
@@ -81,14 +75,17 @@ int main(int argc, char *argv[])
 	send_start(fifo3_file);
 
 	fill_array(input_file, fifo1_file, fifo2_file, fifo3_file);
+}
 
-	//close fifo
+//-------------------------------------------------
+
+void end_process(FILE *input_file, FILE *fifo1_file, FILE *fifo2_file, FILE* fifo3_file)
+{
 	fclose(input_file);
 	fclose(fifo1_file);
 	fclose(fifo2_file);
 	fclose(fifo3_file);
-
-	return EXIT_SUCCESS;
+	//maybe unlink them?
 }
 
 //-------------------------------------------------
@@ -97,50 +94,40 @@ int main(int argc, char *argv[])
 void fill_array(FILE *input_file, FILE *fifo1_file, FILE *fifo2_file, FILE* fifo3_file)
 {
 	int primes_count[ARR_SIZE]; //count in each index the number of times father receive this number
-	int filled = 0;
-	int prime = 0, child_id = 0;
+	int filled = 0, prime = 0, child_id = 0;
 	reset_arr(primes_count, ARR_SIZE);
 
-	while(filled < ARR_SIZE) // while EOF ?
+	while(filled < ARR_SIZE)
 	{
-
     	//read process id and num
 		fscanf(input_file, " %d %d", &child_id, &prime);
-
-		printf("read %d from child %d\n", prime, child_id);
 
 		//check which child sent the number depend on the pid
 		//send the counter of the prime num
 		if (child_id == CHILD_1)
 		{
-		  fprintf(fifo1_file, " %d\n", primes_count[prime]);  //QUESTION:newline?
-		  fflush(fifo1_file);
+		  	write_int_to_fifo(fifo1_file, primes_count[prime]);
 		}
 		else if (child_id == CHILD_2)
 		{
-		  fprintf(fifo2_file, " %d\n", primes_count[prime]);
-		  fflush(fifo2_file);
+		  	write_int_to_fifo(fifo2_file, primes_count[prime]);
 		}
 		else if (child_id == CHILD_3)
 		{
-		  fprintf(fifo3_file, " %d\n", primes_count[prime]);
-		  fflush(fifo3_file);
+		  	write_int_to_fifo(fifo3_file, primes_count[prime]);
 		}
+
 		primes_count[prime]++;	//adds to counter
 		filled++;					//increases fill number
 	}
 
 	//kills children
-	fprintf(fifo1_file, " %d\n", END); //newline??
-	fflush(fifo1_file);
-	fprintf(fifo2_file, " %d\n", END);
-	fflush(fifo2_file);
-	fprintf(fifo3_file, " %d\n", END);
-	fflush(fifo3_file);
+	write_int_to_fifo(fifo1_file, END);
+	write_int_to_fifo(fifo2_file, END);
+	write_int_to_fifo(fifo3_file, END);
 
 	sleep(1);
-	//prints number of different primes, max and min received
-	print_data(primes_count);
+	print_data(primes_count); //prints number of different primes, max and min received
 }
 
 //-------------------------------------------------
@@ -162,7 +149,6 @@ void find_data(int arr[], int *counter, int *max, int *min)
 	//start on i=2 - we can be sure that 0 and 1 is empty
 	for(index = 2; index < ARR_SIZE; index++)
 	{
-	//ken ? (*MAX??? ) or just max
 		if(arr[index] != 0)
 			(*counter)++;
 		if(arr[index] != 0 && index > (*max))
@@ -171,7 +157,6 @@ void find_data(int arr[], int *counter, int *max, int *min)
 			(*min) = index;
 	}
 }
-
 
 //-------------------------------------------------
 
@@ -198,7 +183,6 @@ void check_argv(int argc )
 FILE *open_file(char* filename,  char *mode)
 {
 	FILE *fp = fopen(filename, mode);
-	printf("name %s mode= %s\n", filename, mode);
 
 	if (fp == NULL)
 	{
@@ -210,8 +194,31 @@ FILE *open_file(char* filename,  char *mode)
 
 //-------------------------------------------------
 
+void create_all_fifo(char *argv[])
+{
+	//create fifo if not exist
+  	if((mkfifo(argv[1], S_IFIFO | 0644) == -1 ||
+	  mkfifo(argv[2], S_IFIFO | 0644) == -1 ||
+	  mkfifo(argv[3], S_IFIFO | 0644) == -1 ||
+	  mkfifo(argv[4], S_IFIFO | 0644) == -1) && errno != EEXIST)
+  	{
+		puts("mkfifo error\n");
+  		exit(EXIT_FAILURE);
+  	}
+}
+
+//-------------------------------------------------
+
 void send_start(FILE *fifo_name)
 {
-	fprintf(fifo_name, " %d\n", START); //T: newline? when writing to named pipe??
+	fprintf(fifo_name, " %d\n", START);
 	fflush(fifo_name);
+}
+
+//-------------------------------------------------
+
+void write_int_to_fifo(FILE *fifo_file, int data)
+{
+	fprintf(fifo_file, " %d\n", data);
+	fflush(fifo_file);
 }

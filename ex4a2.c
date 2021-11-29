@@ -1,17 +1,4 @@
 
-/*
-  NOTE FOR ALL PROGRAMS
-    - there are a lot of perrors
-    - id like to send to function a string and then it will print <string> failed and then exit
-*/
-
-//receives via argument vector the number to send to aba
-//sends to aba starting number
-//waits for number back in order to start
-//randomizes numbers in an infinite loop
-//each time there is prime, sends to first program through named pipe
-//when ending message received, prints how many new primes sent
-//ends
 // --------include section------------------------
 
 #include <string.h>//for strcat
@@ -24,9 +11,11 @@
 #include <sys/time.h>
 #include <sys/stat.h> //named pipe
 
+#define FIFO_NAME_SIZE 5
+
 // --------const section------------------------
 
-const int ARR_SIZE = 100;
+const int ARR_SIZE = 1000;
 const int ARGC_SIZE = 3;
 const int START = 1;
 const int END = -1;
@@ -49,12 +38,12 @@ int main(int argc, char *argv[])
 	check_argv(argc);
 	srand(atoi(argv[2]));
 
-	char fifo_name[5] = "fifo"; //5 as a const?
+	char fifo_name[FIFO_NAME_SIZE] = "fifo";
 	strcat(fifo_name, argv[2]);
-	printf("before open file\n");
+
 	FILE *input_file = open_file(argv[1] ,"w");
 	FILE *fifo_file = open_file(fifo_name ,"r");
-	printf("after open file\n");
+
 	start_proc(input_file, fifo_file, atoi(argv[2]));
 
 	return EXIT_SUCCESS;
@@ -65,16 +54,14 @@ int main(int argc, char *argv[])
 void start_proc(FILE *input_file, FILE *fifo_file, int childnum)
 {
 	int status;
-	//sleep(childnum);
-	printf("k send from %d\n", childnum);
+
 	fprintf(input_file, " %d\n", childnum); //sends to aba his number to say he is ready
 	fflush(input_file);
-	printf("after flush\n");
+
 	fscanf(fifo_file, " %d", &status); //reads command to start
 
 	if(status == START)
 	{
-		puts("ok start");
 		handle_child(input_file, fifo_file, childnum);
 	}
 }
@@ -87,7 +74,6 @@ void handle_child(FILE *fifo_w, FILE *fifo_r, int childnum)
 	while(true)
 	{
 		num = rand()%(ARR_SIZE -1) + 2; //randomize num between 2 to 1000
-		printf("get %d\n", num);
 
 		if(is_prime(num))
 		{
@@ -95,7 +81,7 @@ void handle_child(FILE *fifo_w, FILE *fifo_r, int childnum)
 			// write to pipe the data (pid and prime num)
 			fprintf(fifo_w, " %d %d\n", childnum, num );
 			fflush(fifo_w);
-			sleep(childnum/3);
+
 			fscanf(fifo_r," %d", &status);
 			check(status, num, &max, &counter);
 		}
@@ -112,8 +98,6 @@ void check(int status ,int prime, int *max, int *counter)
 
 	else if(status > (*counter))
 	{
-
-		//ken? lo?
 		(*counter) = status;
 		(*max) = prime;
 	}
