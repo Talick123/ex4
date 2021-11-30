@@ -1,17 +1,42 @@
-
 /*
-  NOTE FOR ALL PROGRAMS
-    - there are a lot of perrors
-    - id like to send to function a string and then it will print <string> failed and then exit
+	File: ex4a1.c ex4a2.c
+	Generate and Collect Primes from Named Pipe
+	=====================================================================
+	Written by: Tali Kalev, ID:208629691, Login: talikal
+			and	Noga Levy, ID:315260927, Login: levyno
+
+	This program runs with 4 different processes. Three processes that generates
+	random numbers, when the number is prime the process send it to main process via named pipe.
+	And one process - the main process that collect the primes send from the other processes
+	via named pipe and insert them into array, when the main process gets 1000 primes,
+	alert to the 3 other process to end, prints the minimum prime, max prime and number of
+	different numbers in the array, close all named pipe and finish.
+	when the other processes get the massage from main process to end they prints the
+	prime number they send the most to main process, and finish.
+
+	Compile: gcc -Wall ex4a1.c -o ex4a1
+	         gcc -Wall ex4a2.c -o ex4a2
+	     (ex4a1 = main process, ex4a2 = sub process)
+
+	Run: for start run the main process with the 4 named pipe names.
+	    Then, run 3 times the sub processes and send to the vector
+	    arguments the main named pipe 'fifo0' and the number of process (1-3):
+	        ./ex4a1 fifo0 fifo1 fifo2 fifo3
+	        ./ex4a2 fifo0 1
+	        ./ex4a2 fifo0 2
+	        ./ex4a2 fifo0 3
+
+	Input: No Input
+
+	Output:
+	    From main process (ex4a1) = minimum prime, max prime and number of
+	    different numbers in the array.
+	    Example: The number of different primes received is: 168
+	             The max prime is: 997. The min primes is: 2
+	    From sub process (ex4a2) = prime number they send the most to main process
+	    Example: Process 1101373 sent the prime 233, 14 times
 */
 
-//receives via argument vector the number to send to aba
-//sends to aba starting number
-//waits for number back in order to start
-//randomizes numbers in an infinite loop
-//each time there is prime, sends to first program through named pipe
-//when ending message received, prints how many new primes sent
-//ends
 // --------include section------------------------
 
 #include <string.h>//for strcat
@@ -24,9 +49,11 @@
 #include <sys/time.h>
 #include <sys/stat.h> //named pipe
 
+#define FIFO_NAME_SIZE 5
+
 // --------const section------------------------
 
-const int ARR_SIZE = 100;
+const int ARR_SIZE = 1000;
 const int ARGC_SIZE = 3;
 const int START = 1;
 const int END = -1;
@@ -49,12 +76,12 @@ int main(int argc, char *argv[])
 	check_argv(argc);
 	srand(atoi(argv[2]));
 
-	char fifo_name[5] = "fifo"; //5 as a const?
+	char fifo_name[FIFO_NAME_SIZE] = "fifo";
 	strcat(fifo_name, argv[2]);
-	printf("before open file\n");
+
 	FILE *input_file = open_file(argv[1] ,"w");
 	FILE *fifo_file = open_file(fifo_name ,"r");
-	printf("after open file\n");
+
 	start_proc(input_file, fifo_file, atoi(argv[2]));
 
 	return EXIT_SUCCESS;
@@ -65,16 +92,14 @@ int main(int argc, char *argv[])
 void start_proc(FILE *input_file, FILE *fifo_file, int childnum)
 {
 	int status;
-	//sleep(childnum);
-	printf("k send from %d\n", childnum);
+
 	fprintf(input_file, " %d\n", childnum); //sends to aba his number to say he is ready
 	fflush(input_file);
-	printf("after flush\n");
+
 	fscanf(fifo_file, " %d", &status); //reads command to start
 
 	if(status == START)
 	{
-		puts("ok start");
 		handle_child(input_file, fifo_file, childnum);
 	}
 }
@@ -83,8 +108,7 @@ void start_proc(FILE *input_file, FILE *fifo_file, int childnum)
 
 void handle_child(FILE *fifo_w, FILE *fifo_r, int childnum)
 {
-	int status, num, max = 0, counter = 0; //start at 0 in case didnt get to send any
-
+	int status = 0, num, max = 0, counter = 0; //start at 0 in case didnt get to send any
 	while(true)
 	{
 		num = rand()%(ARR_SIZE -1) + 2; //randomize num between 2 to 1000
@@ -93,7 +117,9 @@ void handle_child(FILE *fifo_w, FILE *fifo_r, int childnum)
 		{
 			//send to father num + getpid() using pipe_fd1
 			// write to pipe the data (pid and prime num)
-			fprintf(fifo_w, " %d %d\n", childnum, num ); //newline???
+			fprintf(fifo_w, " %d %d\n", childnum, num );
+			fflush(fifo_w);
+
 			fscanf(fifo_r," %d", &status);
 			check(status, num, &max, &counter);
 		}
@@ -103,14 +129,13 @@ void handle_child(FILE *fifo_w, FILE *fifo_r, int childnum)
 //-------------------------------------------------
 
 //checks number received from aba and saves if new max or ends if necessary
-void check(int status,int prime, int *max, int *counter)
+void check(int status ,int prime, int *max, int *counter)
 {
 	if(status == END)
 		print_and_end((*max), (*counter));
 
-	if(status > (*counter))
+	else if(status > (*counter))
 	{
-		//ken? lo?
 		(*counter) = status;
 		(*max) = prime;
 	}
@@ -121,7 +146,7 @@ void check(int status,int prime, int *max, int *counter)
 void print_and_end(int max, int counter)
 {
 		if(counter == 0)
-			printf("Process %d sent %d primes\n", (int)getpid(), counter);
+			printf("Process %d didnt sent any prime max number of times\n", (int)getpid());
 		else
 			printf("Process %d sent the prime %d, %d times\n", (int)getpid(), max, counter);
 
@@ -134,7 +159,7 @@ void print_and_end(int max, int counter)
 bool is_prime(int num)
 {
 	int i;
-	for(i = 2; i*i < num; i++)
+	for(i = 2; i*i <= num; i++)
 	{
 		if(num % i == 0)
 			return false;
