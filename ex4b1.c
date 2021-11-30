@@ -1,4 +1,42 @@
+/*
+File: ex4b1.c ex4b2.c
+Generate and Collect Primes from Message Queue
+=====================================================================
+Written by: Tali Kalev, ID:208629691, Login: talikal
+		and	Noga Levy, ID:315260927, Login: levyno
 
+This program runs with 4 different processes. Three processes that generates
+random numbers, when the number is prime the process sends it to main process via message queue.
+And one process - the main process that collect the primes sent from the other processes
+via message queue and insert them into array, when the main process gets 10000 primes,
+alert to the 3 other process to end, prints the minimum prime, max prime and number of
+different numbers in the array, close message queue, prints data and finishes.
+when the other processes get the message from main process to end they print the
+prime number they send the most to main process, and finish.
+
+Compile: gcc -Wall ex4b1.c -o ex4b1
+				 gcc -Wall ex4b2.c -o ex4b2
+		 (ex4b1 = main process, ex4b2 = sub process)
+
+Run: for start run the main process.
+		Then, run 3 times the sub processes and send to the vector
+		arguments the number of process (1-3):
+				./ex4b1
+				./ex4b2 1
+				./ex4b2 2
+				./ex4b2 3
+
+Input: No Input
+
+Output:
+		From main process (ex4b1) = minimum prime, max prime and number of
+		different numbers in the array.
+		Example: The number of different primes received is: 168
+						 The max prime is: 997. The min primes is: 2
+		From sub process (ex4b2) = prime number they send the most to main process
+		Example: Process 1101373 sent the prime 233, 14 times
+
+*/
 // --------include section------------------------
 
 #include <stdio.h>

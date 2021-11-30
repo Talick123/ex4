@@ -1,4 +1,53 @@
+/*
 
+File: ex4c1.c ex4c2.c ex4c3.c
+Interactions Between Registry, Application and Customer
+=====================================================================
+Written by: Tali Kalev, ID:208629691, Login: talikal
+		and	Noga Levy, ID:315260927, Login: levyno
+
+This program allows a customer to register via a registry server and then
+use the tools given in the application server via message queue.
+
+In the Registry Server: customers and the application server can request
+via the message queue to either be added to the registry, check if they
+are in the registry already and to be removed from the registry.
+
+In the Application server: customers can request via message Queue to check
+if an integer is prime or if a string is a palindrome. Before completing these
+requests from the customer, the application server checks with the registry
+server if the customer exists already in the registry.
+
+The customer begins by registering via message queue. After that, the customer
+reads from the user either an integer or a string and checks whether it is
+a prime or palindrome respectively via message queue with the application
+server. The customer prints the result on the screen. When the customer is done
+it requests to remove itself from the registry.
+
+Compile: gcc -Wall ex4c1.c -o ex4c1
+         gcc -Wall ex4c2.c -o ex4c2
+				 gcc -Wall ex4c3.c -o ex4c3
+     (ex4c1 = registry server, ex4c2 = application server, ex4c3.c = customer)
+
+Run: First, run registry server, then application server and then as many
+		customers as desired (here just 1):
+			./ex4c1
+			./ex4c2
+			./ex4c3
+
+Input: The registry server and application server require no input.
+			The customer requires input of either 'n' 's' or 'e'. If 'n' then
+			an integer. If 's' then a string ('e' removes from registry and exits).
+			Example:
+				n
+				7
+
+Output: The registry server and application server have no output.
+				The customer will print the result of its request depending on the
+				user input. If the input is as above, the output will be:
+				Example:
+				7 is a prime.
+*/
 // --------include section------------------------
 
 #include <stdbool.h>
