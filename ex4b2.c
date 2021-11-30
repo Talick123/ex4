@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 
 	//sending to aba that hes ready to start
 	msg._data._status = START;
-	msg._type = 1;
+	msg._type = ALLOWED_TYPE;
 	msg._data._cpid = getpid();
 	if(msgsnd(msqid, &msg, sizeof(struct Data), 0) == -1)
 		perror_and_exit("msgsnd");
