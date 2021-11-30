@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
+#include <ctype.h>
 
 // --------const and enum section-------------------
 
@@ -25,9 +26,10 @@ const int APPLICATION = 2;
 
 // --------struct section------------------------
 
-struct Data1 { //data to registry server
+struct Data1 {
 	pid_t _cpid; //child pid
-  int _status;
+	pid_t _return;
+	int _status;
 };
 
 struct Msgbuf1{ //msg to registry server
@@ -39,7 +41,7 @@ struct Data2 { //data to application server
 	pid_t _cpid; //child pid
   int _status;
   int _num;
-  char* _string;
+  char _string[100];
 };
 
 struct Msgbuf2{ //msg to application server
@@ -52,7 +54,7 @@ struct Msgbuf2{ //msg to application server
 void registr(int misqid1, struct Msgbuf1 *msg1);
 void read_from_user(int misqid1, struct Msgbuf1 *msg1, int misqid2, struct Msgbuf2 *msg2);
 void is_num_prime(int misqid2, struct Msgbuf2 *msg2, int num);
-void is_str_palindrome(int misqid2, struct Msgbuf2 *msg2, char *str);
+void is_str_palindrome(int misqid2, struct Msgbuf2 *msg2, char str[]);
 void exit_from_system(int misqid1, struct Msgbuf1 *msg1);
 void perror_and_exit(char *action);
 
@@ -66,7 +68,7 @@ int main()
 	key_t key1, key2;
 
 	//T: should we put the next 3 things in function??
-	msg2._data2._cpid = msg1._data1._cpid =  getpid();
+	msg2._data2._cpid = msg1._data1._cpid =  msg1._data1._return = getpid();
 
 	//creating external id for message queue
 	if((key2 = ftok(".",'d')) == -1 ||
@@ -93,14 +95,19 @@ void registr(int misqid1, struct Msgbuf1 *msg1)
 	(*msg1)._data1._status = ADD;
 	(*msg1)._type = REGISTER;
 
+	printf("about to register\n");
 	//send request to register
 	if(msgsnd(misqid1, msg1, sizeof(struct Data1), 0) == -1)
 		perror_and_exit("msgsnd failed");
+
+	printf("sent registration\n");
 
 	//read result -- can add to this if the check if full?
 	if(msgrcv(misqid1, msg1, sizeof(struct Data1), getpid(), 0) == -1)
 		perror_and_exit("msgrcv failed");
 
+	printf("received news about registration\n");
+	printf("the status of registration is %d\n", (*msg1)._data1._status);
 	//check if succeeded
 	if((*msg1)._data1._status == FULL)
 		perror_and_exit("registration failed");
@@ -113,13 +120,15 @@ void registr(int misqid1, struct Msgbuf1 *msg1)
 void read_from_user(int misqid1, struct Msgbuf1 *msg1, int misqid2, struct Msgbuf2 *msg2)
 {
 	char req;
-	char *str = NULL;
+	char str[100];
 	int num;
 
-// T: yoram said something about spaces???
+
 	while (true)
 	{
 		req = getchar();
+		printf("the char is: %c \n", req);
+
 		switch (req) {
 			case 'n':
 				scanf(" %d", &num);
@@ -146,12 +155,16 @@ void is_num_prime(int misqid2, struct Msgbuf2 *msg2, int num)
 	(*msg2)._data2._status = PRIME;
 	(*msg2)._data2._num = num;
 
+	printf("asking if prime\n");
 	if(msgsnd(misqid2, msg2, sizeof(struct Data2), 0) == -1)
 		perror_and_exit("msgsnd failed");
+
+	printf("asked\n");
 
 	if(msgrcv(misqid2, msg2, sizeof(struct Data2), getpid(), 0) == -1)
 		perror_and_exit("msgrcv failed");
 
+	printf("received answer\n");
 	//we can do it in one printf
 	switch ((*msg2)._data2._status)
 	{
@@ -168,18 +181,30 @@ void is_num_prime(int misqid2, struct Msgbuf2 *msg2, int num)
 
 //-------------------------------------------------
 
-void is_str_palindrome(int misqid2, struct Msgbuf2 *msg2, char *str)
+void is_str_palindrome(int misqid2, struct Msgbuf2 *msg2, char str[])
 {
 	(*msg2)._type = APPLICATION;
 	(*msg2)._data2._status = PALINDROME;
-	(*msg2)._data2._string = str;
+	int index;
+	for(index = 0; !isspace(str[index]); index++)
+	{
+		(*msg2)._data2._string[index] = str[index];
+	}
+	(*msg2)._data2._string[index] = '\0';
 
+
+	//(*msg2)._data2._string = str;
+
+	printf("asking if palindrome\n");
 	if(msgsnd(misqid2, msg2, sizeof(struct Data2), 0) == -1)
 		perror_and_exit("msgsnd failed");
+
+	printf("asked\n");
 
 	if(msgrcv(misqid2, msg2, sizeof(struct Data2), getpid(), 0) == -1)
 		perror_and_exit("msgrcv failed");
 
+	printf("received answer\n");
 	//we can do it in one printf
 	switch ((*msg2)._data2._status) {
 		case FALSE:

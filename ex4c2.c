@@ -39,9 +39,10 @@ int msqid2;
 
 // --------struct section------------------------
 
-struct Data1 { //to registry
+struct Data1 {
 	pid_t _cpid; //child pid
-  int _status;
+	pid_t _return;
+	int _status;
 };
 
 struct Msgbuf1{ //to registry
@@ -53,7 +54,7 @@ struct Data2 { //to customer
 	pid_t _cpid; //child pid
   int _status;
   int _num;
-  char* _string;
+  char _string[100];
 };
 
 struct Msgbuf2{ //to customer
@@ -123,21 +124,28 @@ void read_requests(int msqid1, struct Msgbuf1 *msg1, int msqid2, struct Msgbuf2 
 
   while(true)
   {
+	printf("about to receive request\n");
     if(msgrcv(msqid2, msg2, sizeof(struct Data2), 2, 0) == -1)
     {
       perror("msgrcv failed\n");
       exit(EXIT_SUCCESS);
     }
 
+    printf("received request, asking registry\n");
+
     //preparing to ask registry server to check if customer exists
     (*msg1)._type = REGISTER;
     (*msg1)._data1._cpid = (*msg2)._data2._cpid;
+    (*msg1)._data1._return = getpid();
     (*msg1)._data1._status = DOESEXIST;
     if(msgsnd(msqid1, msg1, sizeof(struct Data1), 0) == -1) //sending request
     {
       perror("msgsnd failed\n");
       exit(EXIT_FAILURE);
     }
+
+    printf("sent to registry\n");
+
     if(msgrcv(msqid1, msg1, sizeof(struct Data1), getpid(), 0) == -1)//receiving answer (maybe sleep a bit before)
     {
       perror("msgrcv failed\n");
@@ -176,7 +184,7 @@ void read_requests(int msqid1, struct Msgbuf1 *msg1, int msqid2, struct Msgbuf2 
 int is_prime(int num)
 {
 	int i;
-	for(i = 2; i*i < num; i++)
+	for(i = 2; i*i <= num; i++)
 	{
 		if(num % i == 0)
 			return FALSE;//change
@@ -188,6 +196,8 @@ int is_prime(int num)
 
 int is_palindrome(char *string)
 {
+	printf("%s\n", string);
+
 	int length;
 	char *forward, *reverse;
 	length = strlen(string);

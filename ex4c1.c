@@ -21,6 +21,7 @@ int msqid;
 
 struct Data {
 	pid_t _cpid; //child pid
+	pid_t _return;
 	int _status;
 };
 
@@ -33,9 +34,9 @@ struct Msgbuf{
 void catch_int(int signum);
 void read_requests(int msqid, struct Msgbuf *msg);
 int add_to_arr(pid_t arr[], pid_t pid, int *filled);
-int in_arr(pid_t arr[], pid_t pid, int filled);
+int in_arr(pid_t arr[], pid_t pid, int *filled);
 void remove_from_arr(pid_t arr[], pid_t pid, int *filled);
-bool exists_in_arr(pid_t arr[], pid_t pid, int filled);
+bool exists_in_arr(pid_t arr[], pid_t pid, int *filled);
 
 // --------main section--------------------------
 
@@ -86,11 +87,13 @@ void read_requests(int msqid, struct Msgbuf *msg)
 
   while(true)
   {
+	  printf("about to read request\n");
     if(msgrcv(msqid, msg, sizeof(struct Data), 1, 0) == -1)
     {
       perror("msgrcv failed\n");
       exit(EXIT_SUCCESS);
     }
+    printf("read request\n");
 
     switch((*msg)._data._status)
     {
@@ -100,7 +103,7 @@ void read_requests(int msqid, struct Msgbuf *msg)
 		break;
 	  case INARR:
 		//checks if it exists in array
-		status = in_arr(arr, (*msg)._data._cpid, filled);
+		status = in_arr(arr, (*msg)._data._cpid, &filled);
 		break;
 	  case REMOVE:
 		//removes from array
@@ -108,9 +111,11 @@ void read_requests(int msqid, struct Msgbuf *msg)
 		break;
     }
 
+	printf("performed request\n");
+
 	if((*msg)._data._status != REMOVE)
 	{
-		(*msg)._type = (*msg)._data._cpid; //prepares to send status back to sender
+		(*msg)._type = (*msg)._data._return; //prepares to send status back to sender
 		(*msg)._data._status = status;
 
 		//sends status to sender
@@ -120,6 +125,7 @@ void read_requests(int msqid, struct Msgbuf *msg)
 		  exit(EXIT_FAILURE);
 		}
 	}
+	printf("sent back answer\n");
   }
 }
 
@@ -130,21 +136,28 @@ int add_to_arr(pid_t arr[], pid_t pid, int *filled)
 
   //checks if array is already full
   if(*filled == (ARR_SIZE - 1))
+  {
+	  printf("FULL\n");
     return FULL;
+  }
 
   //checks in filled part of array if already exists
-  if(exists_in_arr(arr, pid, *filled))
+  if(exists_in_arr(arr, pid, filled))
+  {
+	  printf("EXISTS\n");
       return EXISTS;
+  }
 
+	printf("adding to registry pid: %d\n", pid);
   //if does not exist, adds and returns
-  arr[++(*filled)] = pid;
+  arr[(*filled)++] = pid;
   return ADDED;
 
 }
 
 //-------------------------------------------------
 
-int in_arr(pid_t arr[], pid_t pid, int filled)
+int in_arr(pid_t arr[], pid_t pid, int *filled)
 {
   if(exists_in_arr(arr, pid, filled))
     return DOESEXIST;
@@ -175,12 +188,12 @@ void remove_from_arr(pid_t arr[], pid_t pid, int *filled)
 
 //-------------------------------------------------
 
-bool exists_in_arr(pid_t arr[], pid_t pid, int filled)
+bool exists_in_arr(pid_t arr[], pid_t pid, int *filled)
 {
   int index;
 
   //checks in filled part of array if already exists
-  for(index = 0; index < filled; index++)
+  for(index = 0; index < *filled; index++)
     if(arr[index] == pid)
       return true;
 
