@@ -49,6 +49,7 @@ void find_data(int arr[], int *counter, int *max, int *min);
 void print_data(int arr[]);
 void reset_arr(int arr[], int size_arr);
 void perror_and_exit(char *action);
+void delete_queue(int msqid);
 
 // --------main section------------------------
 
@@ -159,6 +160,7 @@ void fill_array(int msqid, pid_t ch_pid[], struct Msgbuf *msg)
 	sleep(3);
 	//prints number of different primes, max and min received
 	print_data(primes_count);
+	delete_queue(msqid);
 }
 
 //-------------------------------------------------
@@ -207,4 +209,14 @@ void perror_and_exit(char *action)
 
 	perror(action);
 	exit(EXIT_FAILURE);
+}
+
+void delete_queue(int msqid)
+{
+	if(msgctl(msqid, IPC_RMID, NULL) == -1)
+	{
+		perror("msgctl failed\n");
+		exit(EXIT_FAILURE);
+	}
+	exit(EXIT_SUCCESS);
 }

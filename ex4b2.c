@@ -1,39 +1,33 @@
-//prints also min and max prime values
+//prints the value that was sent most often and number of times
 
 /*
   NOTE FOR ALL PROGRAMS
     - there are a lot of perrors
     - id like to send to function a string and then it will print <string> failed and then exit
 */
-
-/*
-  NOTES FOR THIS SPECIFIC FILE
-  - there is no mention of releasing queue, i think we have to add at the end when kids die
-*/
 // --------include section------------------------
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h> //for pause
 #include <sys/wait.h>
 #include <sys/msg.h>
 #include <string.h>
 #include <errno.h>
-#include <unistd.h> //for sleep
 
 // --------const section------------------------
 
 const int ARR_SIZE = 100;
-const int MAX_INUM = 1000;
-const int NUM_OF_GEN = 3;
+const int ARGC_SIZE = 2;
 const int START = 1;
 const int END = -1;
 
 // --------struct section------------------------
 
-
 struct Data {
 	pid_t _cpid; //child pid
-	int _prime; //
+	int _prime;
   int _status;
 };
 
@@ -42,160 +36,146 @@ struct Msgbuf{
   struct Data _data;
 };
 
-// --------protoype section------------------------
+// --------prototype section----------------------
 
-void fill_array(int msqid, pid_t ch_pid[], struct Msgbuf *msg);
-void find_data(int arr[], int *counter, int *max, int *min);
-void print_data(int arr[]);
-void reset_arr(int arr[], int size_arr);
+void catch_sigusr1(int signum);
+void handle_child(int msqid, struct Msgbuf *msg);
+bool prime(int num);
+void check_argv(int argc);
+void check(int status,int prime, int *max, int *counter);
+void print_and_end(int *max, int *counter);
 void perror_and_exit(char *action);
 
 // --------main section------------------------
 
-int main()
+int main(int argc, char *argv[])
 {
 	struct Msgbuf msg;
-	pid_t ch_pid[NUM_OF_GEN];
-	int msqid, index;
+	int msqid;
 	key_t key;
+
+	signal(SIGUSR1, catch_sigusr1);
+
+	check_argv(argc);
+	srand(atoi(argv[1]));
 
 	//creating external id for message queue
 	if((key = ftok(".",'4')) == -1)
 		perror_and_exit("ftok");
 
 	//creating internal id for message queue
-	if((msqid = msgget(key, 0600 | IPC_CREAT | IPC_EXCL)) == -1 && errno != EEXIST)
+	if((msqid = msgget(key,0)) == -1 && errno != EEXIST)
 		perror_and_exit("msgget");
 
-	printf("waiting to receive from children\n");
-	//receiving 3 ones from children
-
-	for(index = 0; index < NUM_OF_GEN; index++)
-	{
-		printf("reading from child\n");
-		if(msgrcv(msqid, &msg, sizeof(struct Data), 1, 0) == -1)
-			perror_and_exit("msgrcv");
-
-		printf("checking child pid\n");
-		if(msg._data._status == START)
-		  ch_pid[index] = msg._data._cpid;
-	}
 	printf("msqid is: %d\n",msqid);
-	sleep(5);
-	/*
-	printf("reading from child\n");
-		if(msgrcv(msqid, &msg, sizeof(struct Data), 1, 0) == -1)
-		{
-			printf("msqid is: %d\n",msqid);
-			printf("why\n");
-			perror_and_exit("msgrcv");
-		}
-	printf("reading from child\n");
-		if(msgrcv(msqid, &msg, sizeof(struct Data), 1, 0) == -1)
-			perror_and_exit("msgrcv");
-	printf("reading from child\n");
-		if(msgrcv(msqid, &msg, sizeof(struct Data), 1, 0) == -1)
-			perror_and_exit("msgrcv");
-*/
-	for(index = 0; index < NUM_OF_GEN; index++)
+	printf("about to send to aba\n");
+	//can put this in function
+	//sending to aba that hes ready to start
+	msg._data._status = START;
+	msg._type = 1;
+	msg._data._cpid = getpid();
+	printf("MY PID IS: %d\n",getpid());
+	if(msgsnd(msqid, &msg, sizeof(struct Data), 0) == -1)
 	{
-		printf("SENDING TO %d\n",ch_pid[index]);
-		kill(ch_pid[index], SIGUSR1); //each child has a sigusr1 catcher
+		printf("tried to send and didnt succeed\n");
+		perror_and_exit("msgsnd");
 	}
 
-	printf("SENT SIGNAL\n");
-	//starts to fill
-	fill_array(msqid, ch_pid, &msg);
+	printf("msqid is: %d\n",msqid);
+	printf("I SENT TO ABA\n");
+	pause(); //waits for signal from father
+	printf("I RECEIVED FROM ABA\n");
+	handle_child(msqid, &msg); //when signal received, continues to here
 
 	return EXIT_SUCCESS;
 }
 
-
-
 //-------------------------------------------------
-// gets pipe of all children and the pid array
-void fill_array(int msqid, pid_t ch_pid[], struct Msgbuf *msg)
-{
-	printf("In fill array\n");
-	int primes_count[ARR_SIZE]; //count in each index the number of times father receive this number
-	int filled = 0, index;
 
-	reset_arr(primes_count, ARR_SIZE);
-
-
-	while(filled < ARR_SIZE)
-	{
-		printf("reading prime number\n");
-		//reads from queue prime
-		if(msgrcv(msqid, msg, sizeof(struct Data), 1, 0) == -1) //&msg??
-			perror_and_exit("msgrcv");
-
-		printf("i received %d\n",(*msg)._data._prime);
-		printf("preparing to send back\n");
-		(*msg)._type = (*msg)._data._cpid; //gets ready to send to proper child
-		(*msg)._data._status = primes_count[(*msg)._data._prime]; //prepares counter
-
-		printf("sending back\n");
-		//sends to child number of times it received that prime
-		if((msgsnd(msqid, msg, sizeof(struct Data), 0)) == -1)
-			perror_and_exit("msgsnd");
-
-		primes_count[(*msg)._data._prime]++;	//adds to counter
-		filled++;				//increases fill number
-		printf("filled is %d\n",filled);
-	}
-
-
-	//kills children
-	printf("about to murder children\n");
-	(*msg)._data._status = END;
-	for(index = 0; index < NUM_OF_GEN; index++)
-	{
-		msg->_type = ch_pid[index]; //sending to proper child
-		if(msgsnd(msqid, msg, sizeof(struct Data), 0) == -1)
-			perror_and_exit("msgsnd");
-	}
-	sleep(3);
-	//prints number of different primes, max and min received
-	print_data(primes_count);
-}
+void catch_sigusr1(int signum) {} //doesnt do anything when signal is caught
 
 //-------------------------------------------------
 
-void print_data(int arr[])
+void handle_child(int msqid, struct Msgbuf *msg)
 {
-	int counter = 0, max = 2, min = MAX_INUM;
-	find_data(arr, &counter, &max, &min);
+	printf("about to handle child\n");
+	int num, max = 0, counter = 0; //start at 0 in case didnt get to send any
 
-	printf("The number of different primes received is: %d\n", counter);
-	printf("The max prime is: %d. The min primes is: %d\n", max, min);
-}
-
-//-------------------------------------------------
-
-
-void find_data(int arr[], int *counter, int *max, int *min)
-{
-	int index;
-	//start on i=2 - we can be sure that 0 and 1 is empty
-	for(index = 2; index < ARR_SIZE; index++)
+	while(true)
 	{
-		if(arr[index] != 0)
-			(*counter)++;
-		if(arr[index] != 0 && index > *max)
-			*max = index;
-		if(arr[index] != 0 && index < *min)
-			*min = index;
+		num = rand()%(ARR_SIZE -1) + 2; //randomize num between 2 to 1000
+		//printf("number generated is %d\n",num);
+		if(prime(num))
+		{
+			//printf("prime generated is %d\n",num);
+			(*msg)._data._prime = num; // save prime num in struct
+			(*msg)._type = 1;
+			//printf("about to send to father\n");
+			//sends to father
+			if(msgsnd(msqid, msg, sizeof(struct Data), 0) == -1)
+				perror_and_exit("msgsnd");
+
+			//printf("reading from father\n");
+			//reads from father
+			if(msgrcv(msqid, msg, sizeof(struct Data), getpid() , 0) == -1)
+				perror_and_exit("msgrcv");
+
+			//printf("checking data\n");
+			//checks data received
+			check((*msg)._data._status, num, &max, &counter);
+		}
 	}
 }
 
 //-------------------------------------------------
 
-void reset_arr(int arr[], int size_arr)
+//checks number received from aba and saves if new max or ends if necessary
+void check(int status,int prime, int *max, int *counter)
+{
+	if(status == END)
+		print_and_end(max, counter);
+
+	if(status > *counter)
+	{
+		*counter = status;
+		*max = prime;
+	}
+}
+
+//-------------------------------------------------
+
+void print_and_end(int *max, int *counter)
+{
+		if(counter == 0)
+			printf("Process %d didnt send any prime, max number of times\n", (int)getpid());
+		else
+			printf("Process %d sent the prime %d, %d times\n", (int)getpid(), *max, *counter);
+
+		exit(EXIT_SUCCESS);
+}
+
+//-------------------------------------------------
+//gets integer and check if is prime
+bool prime(int num)
 {
 	int i;
-	for(i = 0; i < size_arr; i++)
-		arr[i] = 0;
+	for(i = 2; i*i <= num; i++)
+	{
+		if(num % i == 0)
+			return false;
+	}
+	return true;
+}
+
+//-------------------------------------------------
+
+void check_argv(int argc)
+{
+	if(argc != ARGC_SIZE)
+	{
+		printf("Error! Incorrect number of arguments.\n");
+		exit(EXIT_FAILURE);
+	}
 }
 
 //-------------------------------------------------
